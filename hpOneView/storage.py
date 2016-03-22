@@ -136,6 +136,52 @@ class storage(object):
         body = self._con.get(uri['attachable-volumes'])
         return body
 
+    # ------------------------------------
+    # Storage Volume Attachments
+
+    def get_attachments_volumes(self):
+        body = self._con.get(uri['attachments'] + '?start=0&count=-1')
+        return body
+
+    def get_attachments_volumes_by_volume_uri(self, volume_uri):
+        body = self._con.get(uri['attachments'] + '?filter=storageVolumeUri=' + volume_uri)
+        return body
+
+    def get_attachments_volume_repair(self):
+        body = self._con.get(uri['attachments-repair'] + '?alertFixType=ExtraUnmanagedStorageVolumes')
+        return body
+
+    def get_attachments_volume_repair_by_server_uri(self, server_uri):
+        body = self._con.get(uri['attachments-repair'] +
+                             '?alertFixType=ExtraUnmanagedStorageVolumes' +
+                             '&filter=resourceUri=' + server_uri)
+        return body
+
+    def remove_attachments_volume_repair_from_server(self, server_uri, blocking=True, verbose=False):
+        request = {'type': 'ExtraUnmanagedStorageVolumes',
+                   'resourceUri': server_uri}
+
+        task, body = self._con.post(uri['attachments-repair'], request)
+        if blocking is True:
+            task = self._activity.wait4task(task, tout=600, verbose=verbose)
+            return body
+        return task
+
+    def get_attachments_volumes_paths(self, attachment_id):
+        body = self._con.get(uri['attachments'] + '/' + attachment_id + '/paths')
+        return body
+
+    def get_attachments_volumes_paths_by_id(self, attachment_id, path_id):
+        body = self._con.get(uri['attachments'] + '/' + attachment_id +
+                             '/paths' + '/' + path_id)
+        return body
+
+    def get_attachments_volumes_by_id(self, attachment_id):
+        body = self._con.get(uri['attachments'] + '/' + attachment_id)
+        return body
+
+    # ------------------------------------
+
     def get_storage_volume_templates(self):
         body = self._con.get(uri['vol-templates'])
         return body

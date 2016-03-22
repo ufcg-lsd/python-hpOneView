@@ -180,6 +180,8 @@ uri = {
     'vol-templates': '/rest/storage-volume-templates',
     'connectable-vol': '/rest/storage-volume-templates/connectable-volume-templates',
     'attachable-volumes': '/rest/storage-volumes/attachable-volumes',
+    'attachments': '/rest/storage-volume-attachments',
+    'attachments-repair': '/rest/storage-volume-attachments/repair',
     #------------------------------------
     # FC-SANS
     #------------------------------------
