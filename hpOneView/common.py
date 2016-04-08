@@ -45,7 +45,6 @@ __status__ = 'Development'
 
 
 # Looking for a switch type, using filters:
-# https://<appliance>/rest/switch-types?filter="partNumber = '455880-B21'"
 uri = {
     #------------------------------------
     # Settings
@@ -176,10 +175,14 @@ uri = {
     #------------------------------------
     'storage-pools': '/rest/storage-pools',
     'storage-systems': '/rest/storage-systems',
+    'host-types': '/rest/storage-systems/host-types',
     'storage-volumes': '/rest/storage-volumes',
+    'volumes-repair': '/rest/storage-volumes/repair',
+    'attachments': '/rest/storage-volume-attachments',
     'vol-templates': '/rest/storage-volume-templates',
     'connectable-vol': '/rest/storage-volume-templates/connectable-volume-templates',
     'attachable-volumes': '/rest/storage-volumes/attachable-volumes',
+    'attachments-repair': '/rest/storage-volume-attachments/repair',
     #------------------------------------
     # FC-SANS
     #------------------------------------
@@ -191,6 +194,7 @@ uri = {
     #------------------------------------
     'unmanaged-devices': '/rest/unmanaged-devices',
 }
+# https://<appliance>/rest/switch-types?filter="partNumber = '455880-B21'"
 
 
 ############################################################################
@@ -427,28 +431,86 @@ def make_enet_settings(name,
     }
 
 
-def make_storage_vol_templateV3(name,
-                              capacity,
-                              shareable,
-                              storagePoolUri,
-                              state='Normal',
-                              description='',
-                              storageSystemUri=None,
-                              snapshotPoolUri=None,
-                              provisionType='Thin'):
+def make_storage_volume_template_v3(name, capacity, sto_pool_uri, shareable=True, provision_type='Thin',
+                                    description='', sto_system_uri=None, snapshot_pool_uri=None):
     return {
+        'name': name,
+        'description': description,
         'provisioning': {
             'shareable': shareable,
-            'provisionType': provisionType,
-            'capacity': capacity,
-            'storagePoolUri': storagePoolUri},
-        'name': name,
-        'state': state,
-        'description': description,
-        'storageSystemUri': storageSystemUri,
-        'snapshotPoolUri': snapshotPoolUri,
+            'provisionType': provision_type,
+            'capacity': int(capacity)*1024*1024*1024,
+            'storagePoolUri': sto_pool_uri
+        },
+        'storageSystemUri': sto_system_uri,
+        'snapshotPoolUri': snapshot_pool_uri,
         'type': 'StorageVolumeTemplateV3'
     }
+
+
+def make_storage_volume_v3(name=None, capacity=0, sto_pool_uri=None, shareable=None, is_permanent=True,
+                           provision_type=None, description='', snapshot_uri=None, snapshot_pool_uri=None,
+                           sto_system_uri=None, sto_system_volume_name=None, template_uri=None, wwn=None):
+
+    volume = {
+        'description': description,
+        'isPermanent': is_permanent,
+        'storageSystemUri': sto_system_uri,
+        'snapshotPoolUri': snapshot_pool_uri,
+        'type': 'AddStorageVolumeV3'
+    }
+
+    if template_uri:
+        volume['name'] = name
+        volume['templateUri'] = template_uri
+
+        if capacity:
+            volume['provisioningParameters'] = {
+                'requestedCapacity': int(capacity)*1024*1024*1024
+            }
+        elif shareable and not capacity:
+            volume['provisioningParameters'] = {
+                'shareable': shareable
+            }
+        elif shareable:
+            volume['provisioningParameters'].update({'shareable': shareable})
+    elif snapshot_uri:
+        volume['name'] = name
+        volume['snapshotUri'] = snapshot_uri
+
+        if shareable:
+            volume['provisioningParameters'] = {
+                'shareable': shareable
+            }
+        elif sto_pool_uri and not shareable:
+            volume['provisioningParameters'] = {
+                'storagePoolUri': sto_pool_uri
+            }
+        elif sto_pool_uri:
+            volume['provisioningParameters'].update({'storagePoolUri': sto_pool_uri})
+    elif sto_system_volume_name:
+        volume['storageSystemVolumeName'] = sto_system_volume_name
+
+        if name:
+            volume['name'] = name
+        if shareable:
+            volume['provisioningParameters'].update({'shareable': shareable})
+    elif wwn:
+        volume['wwn'] = wwn
+        volume['name'] = name
+
+        if shareable:
+            volume['provisioningParameters'].update({'shareable': shareable})
+    else:
+        volume['name'] = name
+        volume['provisioningParameters'] = {
+            'storagePoolUri': sto_pool_uri,
+            'requestedCapacity': int(capacity)*1024*1024*1024,
+            'provisionType': provision_type,
+            'shareable': shareable
+        }
+
+    return volume
 
 
 def make_storage_volume(name,
@@ -1589,6 +1651,18 @@ def make_alertMap_dict(notes, etag, state='Active', user='None',
         'notes': notes,
         'eTag': etag
         }
+
+
+def make_url(base_url, *args, **kwargs):
+    for arg in args:
+        base_url += '/' + arg
+
+    if 'force' in kwargs:
+        base_url += '?force=true' if kwargs['force'] else '?force=false'
+    else:
+        base_url += kwargs.get('filter', '')
+
+    return base_url
 
 
 class pages(object):
